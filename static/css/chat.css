@@ -9,7 +9,7 @@
 
 .chat-item {
     display: flex;
-    align-items: center;
+    align-items: flex-start; /* Changed from center to flex-start to align at top */
     padding: 10px;
     border-radius: 8px;
     transition: background-color var(--transition-duration) var(--transition-timing),
@@ -36,6 +36,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
+    flex-shrink: 0; /* Prevent avatar from shrinking */
 }
 
 .chat-avatar img {
@@ -47,6 +48,7 @@
 .chat-info {
     flex-grow: 1;
     overflow: hidden;
+    min-width: 0; /* Ensure proper text truncation in flex container */
 }
 
 .chat-header {
@@ -150,6 +152,32 @@
     font-size: 18px;
 }
 
+/* Admin link styling */
+.admin-link {
+    margin-left: 10px;
+}
+
+.admin-link a {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background-color: rgba(0, 0, 0, 0.05);
+    color: var(--icon-color);
+    transition: all 0.3s ease;
+}
+
+.admin-link a:hover {
+    background-color: var(--primary-color);
+    color: white;
+}
+
+.dark-theme .admin-link a {
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
 /* Сообщения */
 .messages-container {
     flex-grow: 1;
@@ -157,6 +185,7 @@
     overflow-y: auto;
     display: flex;
     flex-direction: column;
+    z-index: -1;
     gap: 10px;
     background-color: transparent; /* Делаем контейнер прозрачным */
     transition: background-color var(--transition-duration) var(--transition-timing);
@@ -166,6 +195,29 @@
     display: flex;
     max-width: 80%;
     animation: messageAppear 0.3s ease-out;
+    align-items: flex-start; /* Align content to top */
+}
+
+.message-avatar {
+    width: 35px;
+    height: 35px;
+    border-radius: 50%;
+    overflow: hidden;
+    margin-right: 8px;
+    flex-shrink: 0; /* Prevent avatar from shrinking */
+    background-color: var(--user-icon-bg);
+}
+
+.message-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.message-bubble-container {
+    display: flex;
+    flex-direction: column;
+    max-width: calc(100% - 43px); /* Account for avatar width + margin */
 }
 
 .message-own {
@@ -174,6 +226,15 @@
 
 .message-other {
     align-self: flex-start;
+}
+
+/* For own messages, we don't show avatar typically */
+.message-own .message-avatar {
+    display: none;
+}
+
+.message-own .message-bubble-container {
+    max-width: 100%;
 }
 
 .message-content {
@@ -185,6 +246,7 @@
     transition: background-color var(--transition-duration) var(--transition-timing),
                 border-color var(--transition-duration) var(--transition-timing),
                 box-shadow var(--transition-duration) var(--transition-timing);
+    position: relative; /* Важно для корректного позиционирования дропбокса */
 }
 
 .dark-theme .message-content {
@@ -457,6 +519,120 @@
         opacity: 1;
         transform: translateY(0);
     }
+}
+
+/* Стили для выпадающего меню перевода */
+.translate-dropdown {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    background-color: var(--card-bg);
+    border-radius: 50%;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+    z-index: 9999; /* Экстремально высокий z-index */
+}
+
+.message-content:hover .translate-dropdown {
+    opacity: 1;
+}
+
+.translate-dropdown-icon {
+    font-size: 12px;
+    color: var(--icon-color);
+}
+
+/* Выносим меню из потока документа для предотвращения перекрытия */
+body .translate-menu {
+    position: fixed; /* Используем fixed вместо absolute */
+    background-color: var(--card-bg);
+    border-radius: 8px;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.3);
+    padding: 8px 0;
+    display: none;
+    min-width: 150px;
+    z-index: 99999; /* Самый высокий возможный z-index */
+    /* Позицию будем задавать динамически через JavaScript */
+}
+
+.dark-theme .translate-menu {
+    background-color: #1e1e1e;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.5);
+}
+
+/* Отображение меню при активации */
+.translate-dropdown.active + .translate-menu,
+.translate-dropdown.active ~ .translate-menu {
+    display: block;
+    animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.translate-option {
+    padding: 8px 15px;
+    font-size: 14px;
+    color: var(--text-color);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+}
+
+.translate-option:hover {
+    background-color: rgba(0, 0, 0, 0.05);
+}
+
+.dark-theme .translate-option:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+.translate-icon {
+    margin-right: 8px;
+    font-size: 14px;
+}
+
+.translate-divider {
+    height: 1px;
+    background-color: rgba(0, 0, 0, 0.1);
+    margin: 5px 0;
+}
+
+.dark-theme .translate-divider {
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+.translate-option.delete-option {
+    color: #ff4757;
+}
+
+.dark-theme .translate-option.delete-option {
+    color: #ff6b81;
+}
+
+.translated-badge {
+    font-size: 11px;
+    color: var(--icon-color);
+    margin-top: 5px;
+    font-style: italic;
+    display: none;
+}
+
+.message.translated .translated-badge {
+    display: block;
+}
+
+.original-text {
+    display: none;
 }
 
 /* Адаптивные стили */

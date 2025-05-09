@@ -1,12 +1,13 @@
 from flask import Flask, jsonify, render_template, redirect, url_for, flash, session, request, send_file
+from datetime import datetime, timedelta
 # Импортируем только функции, не вызываем их здесь
 from dbinit import check_and_update_schema
 import bcrypt
 import os
 from api.auth import auth_bp
 from api.chat import chat_bp
-from io import BytesIO
 import sqlite3
+from io import BytesIO
 
 # Создаем директории для статических файлов
 try:
@@ -24,9 +25,13 @@ from dbinit import init_db
 # Создаем Flask приложение
 app = Flask(__name__, static_folder='static')
 app.secret_key = os.urandom(24)  # Для работы с сессиями
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=7)  # Сессия живет 7 дней
+app.config['SESSION_TYPE'] = 'filesystem'  # Используем файловую систему для хранения сессий
+app.config['SESSION_COOKIE_SECURE'] = False  # В production должно быть True
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+app.config['SESSION_PERMANENT'] = True
 
 # Обеспечиваем создание файла api/user.py
-os.makedirs('api', exist_ok=True)
 user_bp_file = 'api/user.py'
 if not os.path.exists(user_bp_file):
     print(f"Creating {user_bp_file}")
@@ -146,7 +151,6 @@ def before_request():
                     print(f"Empty default avatar created at {avatar_path}")
                 except:
                     print("Failed to create empty avatar file")
-        
         first_request_handled = True
 
 @app.route('/ping')
@@ -199,6 +203,74 @@ def user_photo_redirect():
     if 'user_id' not in session:
         return send_file('static/images/avatar.png', mimetype='image/png')
     return redirect('/api/user/photo')
+
+# Admin route handler
+@app.route('/admin')
+def admin_dashboard():
+    # Check if user is logged in
+    if 'user_id' not in session:
+        return redirect(url_for('home'))
+    
+    # Check if user is an admin
+    conn = sqlite3.connect('database.db')
+    conn.row_factory = sqlite3.Row
+    
+    # Debug: Print the user ID trying to access admin
+    user_id = session['user_id']
+    print(f"Admin access attempt by user ID: {user_id}")
+    
+    # Check admin status (assuming there's an is_admin column or admin_users table)
+    try:
+        # First check if the admin field exists in users table
+        cursor = conn.cursor()
+        cursor.execute("PRAGMA table_info(users)")
+        columns = [col[1] for col in cursor.fetchall()]
+        print(f"Database columns in users table: {columns}")
+        
+        if 'is_admin' in columns:
+            user = conn.execute('SELECT is_admin FROM users WHERE id = ?', 
+                               (user_id,)).fetchone()
+            is_admin = user and user['is_admin'] == 1
+            print(f"User admin status from database: {is_admin}")
+        else:
+            # If no admin field, grant admin access to user ID 1 (first user)
+            is_admin = user_id == 1
+            print(f"No is_admin column, granting access based on ID: {is_admin}")
+        
+        if not is_admin:
+            print(f"Access denied: User {user_id} is not an admin")
+            return redirect(url_for('home'))
+        
+        # Get statistics for admin dashboard
+        stats = {}
+        stats['total_users'] = conn.execute('SELECT COUNT(*) as count FROM users').fetchone()['count']
+        
+        # Count active users (active in last 15 minutes)
+        import datetime
+        fifteen_mins_ago = (datetime.datetime.now() - datetime.timedelta(minutes=15)).isoformat()
+        stats['active_users'] = conn.execute(
+            'SELECT COUNT(*) as count FROM users WHERE last_active > ?', 
+            (fifteen_mins_ago,)
+        ).fetchone()['count']
+        
+        # Count groups
+        stats['total_groups'] = conn.execute('SELECT COUNT(*) as count FROM group_chats').fetchone()['count']
+        
+        # Get recent users with their last activity time
+        recent_users = conn.execute('''
+            SELECT id, nickname, last_active 
+            FROM users 
+            ORDER BY last_active DESC LIMIT 10
+        ''').fetchall()
+        
+        conn.close()
+        
+        print(f"Admin dashboard successfully rendered for user {user_id}")
+        return render_template('admin.html', stats=stats, recent_users=recent_users)
+    except Exception as e:
+        conn.close()
+        print(f"Error in admin access check: {e}")
+        return redirect(url_for('home'))
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0')

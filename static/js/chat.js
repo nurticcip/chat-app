@@ -19,6 +19,24 @@ let isUpdatingChats = false;
 let isUpdatingMessages = false;
 let lastUserActivity = Date.now();
 
+
+// Тестирование библиотеки перевода
+document.addEventListener('DOMContentLoaded', function() {
+    console.log("Проверяем библиотеку перевода...");
+    setTimeout(() => {
+        if (typeof translate !== 'undefined') {
+            translate("Hello world", { to: 'ru' })
+                .then(result => {
+                    console.log("Тест перевода:", result);
+                })
+                .catch(error => {
+                    console.error("Ошибка тестового перевода:", error);
+                });
+        } else {
+            console.error("Библиотека перевода не загружена!");
+        }
+    }, 1000);
+});
 // Инициализация компонента чата
 function initChatComponent() {
     console.log("Инициализация компонента чата...");
@@ -546,7 +564,59 @@ async function loadChatMessages(chatId, offset = 0, silentUpdate = false) {
                 '<div class="error-message">Не удалось загрузить сообщения</div>';
         }
     }
+    if (!messageText) {
+        console.warn("Не найден элемент .message-text:", message);
+        return;
+    }
+    
+    if (!messageContent) {
+        console.warn("Не найден элемент .message-content:", message);
+        return;
+    }
+    
+    // Остальной код без изменений...
+    message.classList.add('has-translation-dropdown');
+    
+    // Create dropdown elements
+    const translateDropdown = document.createElement('div');
+    translateDropdown.className = 'translate-dropdown';
+    translateDropdown.innerHTML = `
+        <div class="translate-dropdown-icon">▼</div>
+        <div class="translate-menu">
+            <div class="translate-option to-russian">
+                <span class="translate-icon">🔄</span>
+                <span>Перевод</span>
+            </div>
+            <div class="translate-option to-original">
+                <span class="translate-icon">↩️</span>
+                <span>Оригинал</span>
+            </div>
+        </div>
+    `;
+    
+    // Добавляем элементы
+    messageContent.appendChild(translateDropdown);
+    
+    // Запоминаем оригинальный текст
+    const originalText = messageText.innerHTML;
+    const originalTextStore = document.createElement('div');
+    originalTextStore.className = 'original-text';
+    originalTextStore.innerHTML = originalText;
+    messageContent.appendChild(originalTextStore);
+    
+    // Добавляем значок "переведено"
+    const translatedBadge = document.createElement('div');
+    translatedBadge.className = 'translated-badge';
+    translatedBadge.textContent = 'переведено';
+    messageText.after(translatedBadge);
 }
+    
+if (typeof addTranslationDropdowns === 'function') {
+    addTranslationDropdowns();
+} else if (typeof initTranslationFeature === 'function') {
+    initTranslationFeature();
+}
+
 
 // Обновление сообщений текущего чата
 async function updateCurrentChatMessages() {
@@ -1708,3 +1778,370 @@ window.chatModule = {
     keepSessionAlive,
     openGroupInfoModal
 };
+
+
+function initTranslationFeature() {
+    // Add translation dropdown to all messages
+    function addTranslationDropdowns() {
+        document.querySelectorAll('.message:not(.has-translation-dropdown)').forEach(message => {
+            const messageContent = message.querySelector('.message-content');
+            const messageText = message.querySelector('.message-text');
+            
+            if (!messageText || !messageContent) return;
+            
+            message.classList.add('has-translation-dropdown');
+            
+            // Create dropdown elements with expanded options
+            const translateDropdown = document.createElement('div');
+            translateDropdown.className = 'translate-dropdown';
+            translateDropdown.innerHTML = `
+                <div class="translate-dropdown-icon">▼</div>
+                <div class="translate-menu">
+                    <div class="translate-option to-russian">
+                        <span class="translate-icon">🔄</span>
+                        <span>Перевод</span>
+                    </div>
+                    <div class="translate-option to-original">
+                        <span class="translate-icon">↩️</span>
+                        <span>Оригинал</span>
+                    </div>
+                    <div class="translate-divider"></div>
+                    <div class="translate-option reply-option">
+                        <span class="translate-icon">↩️</span>
+                        <span>Reply</span>
+                    </div>
+                    <div class="translate-option edit-option">
+                        <span class="translate-icon">✏️</span>
+                        <span>Edit</span>
+                    </div>
+                    <div class="translate-option delete-option">
+                        <span class="translate-icon">🗑️</span>
+                        <span>Delete</span>
+                    </div>
+                </div>
+            `;
+            
+            messageContent.appendChild(translateDropdown);
+            
+            // Store the original text
+            const originalText = messageText.innerHTML;
+            const originalTextStore = document.createElement('div');
+            originalTextStore.className = 'original-text';
+            originalTextStore.innerHTML = originalText;
+            messageContent.appendChild(originalTextStore);
+            
+            // Add translated badge
+            const translatedBadge = document.createElement('div');
+            translatedBadge.className = 'translated-badge';
+            translatedBadge.textContent = 'переведено';
+            messageText.after(translatedBadge);
+            
+            // Toggle dropdown menu
+            translateDropdown.addEventListener('click', function(e) {
+                e.stopPropagation();
+                this.classList.toggle('active');
+            });
+            
+            // Handle translation
+            translateDropdown.querySelector('.translate-option.to-russian').addEventListener('click', function(e) {
+                e.stopPropagation();
+                translateMessage(message, messageText);
+                translateDropdown.classList.remove('active');
+            });
+            
+            // Handle switch back to original
+            translateDropdown.querySelector('.translate-option.to-original').addEventListener('click', function(e) {
+                e.stopPropagation();
+                restoreOriginal(message, messageText);
+                translateDropdown.classList.remove('active');
+            });
+            
+            // Handle reply action
+            translateDropdown.querySelector('.reply-option').addEventListener('click', function(e) {
+                e.stopPropagation();
+                // Get message ID to reply to
+                const messageId = message.dataset.messageId;
+                replyToMessage(messageId, messageText.textContent);
+                translateDropdown.classList.remove('active');
+            });
+            
+            // Handle edit action (only for own messages)
+            const editOption = translateDropdown.querySelector('.edit-option');
+            if (message.classList.contains('message-own')) {
+                editOption.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    const messageId = message.dataset.messageId;
+                    editMessage(messageId, messageText);
+                    translateDropdown.classList.remove('active');
+                });
+            } else {
+                editOption.style.display = 'none'; // Hide edit option for others' messages
+            }
+            
+            // Handle delete action (only for own messages)
+            const deleteOption = translateDropdown.querySelector('.delete-option');
+            if (message.classList.contains('message-own')) {
+                deleteOption.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    const messageId = message.dataset.messageId;
+                    deleteMessage(messageId, message);
+                    translateDropdown.classList.remove('active');
+                });
+            } else {
+                deleteOption.style.display = 'none'; // Hide delete option for others' messages
+            }
+        });
+    }
+    
+    // Translate a message
+    function translateMessage(messageElement, textElement) {
+        // Show loading state
+        const originalText = messageElement.querySelector('.original-text').innerHTML;
+        textElement.innerHTML = 'Переводим...';
+        
+        // Call translation API (here using a mock function for demo)
+        translateText(originalText)
+            .then(translatedText => {
+                textElement.innerHTML = translatedText;
+                messageElement.classList.add('translated');
+            })
+            .catch(error => {
+                console.error('Translation error:', error);
+                textElement.innerHTML = originalText;
+                alert('Ошибка перевода: ' + error.message);
+            });
+    }
+    
+    // Restore original message
+    function restoreOriginal(messageElement, textElement) {
+        const originalText = messageElement.querySelector('.original-text').innerHTML;
+        textElement.innerHTML = originalText;
+        messageElement.classList.remove('translated');
+    }
+    
+    // Function to reply to a message
+    function replyToMessage(messageId, text) {
+        // Get the message input field
+        const messageInput = document.getElementById('message-input');
+        
+        // Add reply reference to the input field
+        messageInput.value = `[Reply to: "${text.substring(0, 30)}${text.length > 30 ? '...' : ''}"] `;
+        
+        // Store the message ID being replied to (can be used when sending)
+        messageInput.dataset.replyToId = messageId;
+        
+        // Focus on the input field
+        messageInput.focus();
+        
+        // You might want to add visual indication of reply mode
+        console.log(`Replying to message ID: ${messageId}`);
+    }
+    
+    // Function to edit a message
+    function editMessage(messageId, messageTextElement) {
+        // Get the original text
+        const originalText = messageTextElement.textContent;
+        
+        // Create an input field for editing
+        const inputField = document.createElement('textarea');
+        inputField.className = 'edit-message-input';
+        inputField.value = originalText;
+        
+        // Replace message text with input field
+        messageTextElement.innerHTML = '';
+        messageTextElement.appendChild(inputField);
+        
+        // Focus and select all text
+        inputField.focus();
+        inputField.select();
+        
+        // Handle saving on Enter
+        inputField.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                const newText = this.value.trim();
+                
+                // If empty, restore original text
+                if (!newText) {
+                    messageTextElement.innerHTML = originalText;
+                    return;
+                }
+                
+                // Send update to server
+                updateMessageOnServer(messageId, newText, messageTextElement);
+            }
+        });
+        
+        // Handle canceling on Escape
+        inputField.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                messageTextElement.innerHTML = originalText;
+            }
+        });
+        
+        console.log(`Editing message ID: ${messageId}`);
+    }
+    
+    // Function to save edited message
+    function updateMessageOnServer(messageId, newText, messageTextElement) {
+        // Show loading state
+        const originalText = messageTextElement.querySelector('.edit-message-input').value;
+        messageTextElement.innerHTML = 'Сохранение...';
+        
+        // Make API request to update message
+        fetch(`/api/chat/message/${messageId}/edit`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ content: newText })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Update the message with the new text
+                messageTextElement.innerHTML = newText;
+                // Maybe add an "edited" indicator if not already present
+            } else {
+                // Show error and restore original
+                messageTextElement.innerHTML = originalText;
+                alert('Failed to update message: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error updating message:', error);
+            messageTextElement.innerHTML = originalText;
+            alert('Error updating message');
+        });
+    }
+    
+    // Function to delete a message
+    function deleteMessage(messageId, messageElement) {
+        if (confirm('Are you sure you want to delete this message?')) {
+            // Show loading state
+            messageElement.classList.add('deleting');
+            
+            // Make API request to delete message
+            fetch(`/api/chat/message/${messageId}/delete`, {
+                method: 'POST'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Animate removal
+                    messageElement.style.height = messageElement.offsetHeight + 'px';
+                    setTimeout(() => {
+                        messageElement.style.height = '0';
+                        messageElement.style.opacity = '0';
+                        messageElement.style.margin = '0';
+                        messageElement.style.padding = '0';
+                        
+                        // Remove element after animation
+                        setTimeout(() => {
+                            messageElement.remove();
+                        }, 300);
+                    }, 10);
+                } else {
+                    // Show error and remove loading state
+                    messageElement.classList.remove('deleting');
+                    alert('Failed to delete message: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error deleting message:', error);
+                messageElement.classList.remove('deleting');
+                alert('Error deleting message');
+            });
+        }
+    }
+    
+    // Mock translation API function - replace with actual API call
+    function translateText(text) {
+        // Check if translate library is loaded
+        if (typeof translate !== 'undefined') {
+            // Use the translate library
+            return translate(text, { to: 'ru' })
+                .catch(error => {
+                    console.error('Translation error:', error);
+                    return `[Перевод] ${text}`;
+                });
+        } else {
+            // Fallback if translate library is not available
+            console.warn('Translation library not loaded, using fallback');
+            return Promise.resolve(`[Перевод] ${text}`);
+        }
+    }
+    
+    // Add translation features to existing messages
+    addTranslationDropdowns();
+    
+    // Create a mutation observer to watch for new messages
+    const messagesContainer = document.querySelector('.messages-container');
+    if (messagesContainer) {
+        const observer = new MutationObserver(mutations => {
+            mutations.forEach(mutation => {
+                if (mutation.addedNodes.length) {
+                    addTranslationDropdowns();
+                }
+            });
+        });
+        
+        observer.observe(messagesContainer, { childList: true, subtree: true });
+    }
+}
+
+// Улучшенный обработчик для отображения выпадающего меню
+function handleTranslateDropdown() {
+    document.addEventListener('click', function(e) {
+        // Закрываем все активные меню при клике в любом месте
+        if (!e.target.closest('.translate-dropdown')) {
+            document.querySelectorAll('.translate-dropdown.active').forEach(dropdown => {
+                dropdown.classList.remove('active');
+            });
+        }
+    });
+    
+    // Делегируем обработку клика на весь документ
+    document.addEventListener('click', function(e) {
+        const dropdownIcon = e.target.closest('.translate-dropdown-icon');
+        if (dropdownIcon) {
+            e.stopPropagation();
+            const dropdown = dropdownIcon.parentElement;
+            
+            // Сначала закрываем все открытые меню
+            document.querySelectorAll('.translate-dropdown.active').forEach(activeDropdown => {
+                if (activeDropdown !== dropdown) {
+                    activeDropdown.classList.remove('active');
+                }
+            });
+            
+            // Переключаем активное состояние
+            dropdown.classList.toggle('active');
+            
+            // Находим связанное меню
+            const menu = dropdown.nextElementSibling;
+            if (menu && menu.classList.contains('translate-menu')) {
+                // Позиционируем меню относительно кнопки
+                const rect = dropdown.getBoundingClientRect();
+                menu.style.top = rect.bottom + 5 + 'px';  // 5px отступ
+                menu.style.right = window.innerWidth - rect.right + 'px';
+                
+                // Обработчики для пунктов меню
+                menu.querySelectorAll('.translate-option').forEach(option => {
+                    option.addEventListener('click', function(e) {
+                        e.stopPropagation();
+                        dropdown.classList.remove('active');
+                        
+                        // Здесь можно добавить код для обработки выбранного действия
+                        // например, перевод, удаление и т.д.
+                    });
+                });
+            }
+        }
+    });
+}
+
+// Вызываем функцию инициализации при загрузке
+document.addEventListener('DOMContentLoaded', function() {
+    handleTranslateDropdown();
+});

@@ -12,6 +12,22 @@ def get_db_connection():
     conn.row_factory = sqlite3.Row
     return conn
 
+def get_user_photo(user_id=None):
+    """Get user profile photo"""
+    if user_id is None and 'user_id' in session:
+        user_id = session['user_id']
+    elif user_id is None:
+        return None
+    
+    conn = get_db_connection()
+    result = conn.execute('SELECT profile_photo FROM users WHERE id = ?', (user_id,)).fetchone()
+    conn.close()
+    
+    if not result or not result['profile_photo']:
+        return None
+    
+    return BytesIO(result['profile_photo'])
+
 @user_bp.route('/api/user/me', methods=['GET'])
 def get_current_user():
     """Get information about the current logged in user"""
@@ -41,52 +57,68 @@ def get_current_user():
     })
 
 @user_bp.route('/api/user/photo', methods=['GET'])
-def get_user_photo():
+def get_user_photo_route():
     """Get user profile photo"""
     if 'user_id' not in session:
-        return jsonify({"success": False, "message": "Не авторизован"}), 401
+        return jsonify({'success': False, 'message': 'Пользователь не авторизован'}), 401
     
-    user_id = session.get('user_id')
+    user_id = session['user_id']
+    photo = get_user_photo(user_id)
     
-    # Добавляем параметр для предотвращения кеширования
-    cache_bust = request.args.get('t', '')
+    if not photo:
+        return send_file('static/images/avatar.png', mimetype='image/png')
     
+    return send_file(photo, mimetype='image/jpeg')
+
+@user_bp.route('/api/user/photo/<int:user_id>', methods=['GET'])
+def get_user_photo_by_id(user_id):
+    """Get user profile photo by user ID"""
+    # Check if the user exists
     conn = get_db_connection()
-    photo_data = conn.execute('SELECT profile_photo FROM users WHERE id = ?', 
-                           (user_id,)).fetchone()
+    user = conn.execute('SELECT id FROM users WHERE id = ?', (user_id,)).fetchone()
     conn.close()
     
-    if not photo_data or not photo_data['profile_photo']:
-        # Возвращаем дефолтное изображение
-        default_photo_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 
-                                       'static', 'images', 'avatar.png')
+    if not user:
+        return jsonify({'success': False, 'message': 'Пользователь не найден'}), 404
+    
+    # Get the user's photo
+    photo = get_user_photo(user_id)
+    
+    # If no photo found, return the default avatar
+    if not photo:
+        default_photo_path = os.path.join('static', 'images', 'avatar.png')
+        # Make sure the default photo exists
         if not os.path.exists(default_photo_path):
-            # Создаем директорию, если не существует
-            os.makedirs(os.path.dirname(default_photo_path), exist_ok=True)
-            
-            # Создаем простой placeholder-аватар
-            try:
-                from PIL import Image, ImageDraw
-                img = Image.new('RGB', (200, 200), color=(73, 109, 137))
-                d = ImageDraw.Draw(img)
-                d.ellipse((50, 50, 150, 150), fill=(255, 255, 255))
-                img.save(default_photo_path)
-                print(f"Default avatar created at {default_photo_path}")
-            except Exception as e:
-                print(f"Failed to create avatar: {e}")
-                # Если PIL недоступен, создаем пустой файл
-                with open(default_photo_path, 'wb') as f:
-                    f.write(b'\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x06\x00\x00\x00\x1f\x15\xc4\x89\x00\x00\x00\nIDATx\x9cc\x00\x01\x00\x00\x05\x00\x01\r\n\x0b\xb8\x00\x00\x00\x00IEND\xaeB`\x82')
-        
+            return jsonify({'success': False, 'message': 'Фото профиля по умолчанию не найдено'}), 500
         return send_file(default_photo_path, mimetype='image/png')
     
-    return send_file(
-        BytesIO(photo_data['profile_photo']),
-        mimetype='image/jpeg',
-        as_attachment=False,
-        etag=False,  # Отключаем ETag для предотвращения кэширования
-        max_age=0    # Отключаем кэширование
-    )
+    return send_file(photo, mimetype='image/jpeg')
+
+@user_bp.route('/api/user/photo', methods=['POST'])
+def upload_user_photo():
+    """Upload user profile photo"""
+    if 'user_id' not in session:
+        return jsonify({'success': False, 'message': 'Пользователь не авторизован'}), 401
+    
+    if 'profile_photo' not in request.files:
+        return jsonify({'success': False, 'message': 'Файл не найден'}), 400
+    
+    photo_file = request.files['profile_photo']
+    
+    if not photo_file.filename:
+        return jsonify({'success': False, 'message': 'Файл не выбран'}), 400
+    
+    # Считываем данные фотографии
+    photo_data = photo_file.read()
+    
+    # Сохраняем фотографию в базе данных
+    conn = get_db_connection()
+    conn.execute('UPDATE users SET profile_photo = ? WHERE id = ?', 
+                (photo_data, session['user_id']))
+    conn.commit()
+    conn.close()
+    
+    return jsonify({'success': True, 'message': 'Фото профиля обновлено'})
 
 @user_bp.route('/api/user/by_id/<int:user_id>', methods=['GET'])
 def get_user_by_id(user_id):
@@ -113,29 +145,6 @@ def get_user_by_id(user_id):
             "has_profile_photo": is_profile_photo_exists(user_id)
         }
     })
-
-@user_bp.route('/api/user/photo/<int:user_id>', methods=['GET'])
-def get_user_photo_by_id(user_id):
-    """Get profile photo of a specific user"""
-    if 'user_id' not in session:
-        return jsonify({"success": False, "message": "Не авторизован"}), 401
-    
-    conn = get_db_connection()
-    photo_data = conn.execute('SELECT profile_photo FROM users WHERE id = ?', 
-                           (user_id,)).fetchone()
-    conn.close()
-    
-    if not photo_data or not photo_data['profile_photo']:
-        # Возвращаем дефолтное изображение
-        default_photo_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 
-                                       'static', 'images', 'default_profile.png')
-        return send_file(default_photo_path, mimetype='image/png')
-    
-    return send_file(
-        BytesIO(photo_data['profile_photo']),
-        mimetype='image/jpeg',
-        as_attachment=False
-    )
 
 @user_bp.route('/api/user/update_profile', methods=['POST'])
 def update_profile():

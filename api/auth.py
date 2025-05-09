@@ -1,6 +1,6 @@
 import bcrypt
 import sqlite3
-from flask import Blueprint, request, jsonify, session
+from flask import Blueprint, request, jsonify, session, render_template, redirect, url_for
 import base64
 import secrets
 import string
@@ -196,9 +196,16 @@ def register():
         print(f"Error during registration: {e}")
         return jsonify({"success": False, "message": "Ошибка при регистрации пользователя"}), 500
 
-@auth_bp.route('/login', methods=['POST'])
+@auth_bp.route('/login', methods=['GET', 'POST'])
 def login():
-    data = request.get_json()
+    # Render login page
+    if request.method == 'GET':
+        if 'user_id' in session:
+            return redirect(url_for('chat_page'))
+        return render_template('login.html')
+    
+    # Handle POST requests - process login
+    data = request.get_json() if request.is_json else request.form
     
     if not data or 'nickname' not in data or 'password' not in data:
         return jsonify({"success": False, "message": "Не все поля заполнены"}), 400
@@ -238,7 +245,7 @@ def send_verification_code():
     data = request.get_json()
     if not data or 'email' not in data:
         return jsonify({"success": False, "detail": "Email не указан"}), 400
-
+    
     email = data['email']
     
     # Проверка формата email
@@ -292,7 +299,7 @@ def send_verification_code():
     else:
         conn.close()
         return jsonify({"success": False, "detail": "Не удалось отправить код верификации"}), 500
-
+    
 @auth_bp.route('/api/ping', methods=['GET'])
 def ping():
     """Simple endpoint to keep user session alive"""

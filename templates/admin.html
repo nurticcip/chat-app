@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - Chat App</title>
+    <link rel="stylesheet" href="/static/css/main.css">
+    <link rel="stylesheet" href="/static/css/admin.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Sidebar Navigation -->
+        <div class="admin-sidebar">
+            <div class="admin-logo">
+                <i class="fas fa-cog"></i>
+                <h2>Админ-панель</h2>
+            </div>
+            <nav class="admin-nav">
+                <ul>
+                    <li class="active"><a href="#dashboard"><i class="fas fa-tachometer-alt"></i> Статистика</a></li>
+                    <li><a href="#users"><i class="fas fa-users"></i> Пользователи</a></li>
+                    <li><a href="#groups"><i class="fas fa-user-friends"></i> Группы</a></li>
+                    <li><a href="#"><i class="fas fa-arrow-left"></i> Назад к чату</a></li>
+                </ul>
+            </nav>
+        </div>
+
+        <!-- Main Content Area -->
+        <div class="admin-content">
+            <header class="admin-header">
+                <h1>Панель администрирования</h1>
+                <div class="admin-header-right">
+                    <a href="/chat" class="back-button"><i class="fas fa-arrow-left"></i> Вернуться в чат</a>
+                </div>
+            </header>
+
+            <main class="admin-main">
+                <section id="dashboard" class="admin-section">
+                    <h2>Общая статистика</h2>
+                    
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-icon users-icon">
+                                <i class="fas fa-users"></i>
+                            </div>
+                            <div class="stat-content">
+                                <h3>Всего пользователей</h3>
+                                <p class="stat-number">{{ stats.total_users }}</p>
+                            </div>
+                        </div>
+                        
+                        <div class="stat-card">
+                            <div class="stat-icon active-icon">
+                                <i class="fas fa-user-clock"></i>
+                            </div>
+                            <div class="stat-content">
+                                <h3>Активных пользователей</h3>
+                                <p class="stat-number">{{ stats.active_users }}</p>
+                            </div>
+                        </div>
+                        
+                        <div class="stat-card">
+                            <div class="stat-icon groups-icon">
+                                <i class="fas fa-comments"></i>
+                            </div>
+                            <div class="stat-content">
+                                <h3>Всего групп</h3>
+                                <p class="stat-number">{{ stats.total_groups }}</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <h2>Активность пользователей</h2>
+                    <div class="admin-table-container">
+                        <table class="admin-table">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Пользователь</th>
+                                    <th>Последняя активность</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for user in recent_users %}
+                                <tr>
+                                    <td>{{ user.id }}</td>
+                                    <td>{{ user.nickname }}</td>
+                                    <td>{{ user.last_active }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <section id="users" class="admin-section hidden">
+                    <h2>Управление пользователями</h2>
+                    <!-- User management content will be loaded via AJAX -->
+                    <div id="users-content" class="loading">Загрузка...</div>
+                </section>
+
+                <section id="groups" class="admin-section hidden">
+                    <h2>Управление группами</h2>
+                    <!-- Group management content will be loaded via AJAX -->
+                    <div id="groups-content" class="loading">Загрузка...</div>
+                </section>
+            </main>
+        </div>
+    </div>
+
+    <script>
+        // Simple navigation for admin panel
+        document.querySelectorAll('.admin-nav a').forEach(link => {
+            link.addEventListener('click', function(e) {
+                const targetId = this.getAttribute('href');
+                
+                // If it's a section on this page
+                if (targetId.startsWith('#')) {
+                    e.preventDefault();
+                    
+                    // Update active class
+                    document.querySelectorAll('.admin-nav li').forEach(li => {
+                        li.classList.remove('active');
+                    });
+                    this.parentElement.classList.add('active');
+                    
+                    // Show corresponding section
+                    document.querySelectorAll('.admin-section').forEach(section => {
+                        section.classList.add('hidden');
+                    });
+                    
+                    document.querySelector(targetId).classList.remove('hidden');
+                }
+            });
+        });
+    </script>
+</body>
+</html>

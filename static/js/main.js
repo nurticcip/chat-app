@@ -319,6 +319,14 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    // Admin button handler
+    const adminButton = document.getElementById('adminButton');
+    if (adminButton) {
+        adminButton.addEventListener('click', function() {
+            window.location.href = '/admin';
+        });
+    }
+
     // Инициализация модальных окон для медиафайлов
     initMediaModals();
 });
