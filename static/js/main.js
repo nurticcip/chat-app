@@ -323,6 +323,13 @@ document.addEventListener('DOMContentLoaded', function() {
     const adminButton = document.getElementById('adminButton');
     if (adminButton) {
         adminButton.addEventListener('click', function() {
+            // Clear all chat update intervals before navigating away
+            if (window.chatModule) {
+                if (window.chatListUpdateInterval) clearInterval(window.chatListUpdateInterval);
+                if (window.activeChatlUpdateInterval) clearInterval(window.activeChatlUpdateInterval);
+                // Store navigation state to prevent auto-reconnection
+                localStorage.setItem('adminNavigation', 'true');
+            }
             window.location.href = '/admin';
         });
     }
@@ -733,3 +740,43 @@ function openLightbox(imageUrl, allImages = []) {
         lightbox.remove();
     }
 }
+
+// Admin button functionality - updated
+document.addEventListener('DOMContentLoaded', function() {
+    const adminButton = document.getElementById('adminButton');
+    
+    if (adminButton) {
+        // Click event for admin button
+        adminButton.addEventListener('click', function() {
+            // Clear all chat update intervals before navigating away
+            if (window.chatModule) {
+                if (window.chatListUpdateInterval) clearInterval(window.chatListUpdateInterval);
+                if (window.activeChatlUpdateInterval) clearInterval(window.activeChatlUpdateInterval);
+                // Store navigation state to prevent auto-reconnection
+                localStorage.setItem('adminNavigation', 'true');
+            }
+            window.location.href = '/admin';
+        });
+        
+        // Check for admin notifications - example code that can be implemented with real data
+        function checkAdminNotifications() {
+            fetch('/api/admin/notifications/count')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success && data.count) {
+                        adminButton.setAttribute('data-count', data.count);
+                    } else {
+                        adminButton.setAttribute('data-count', '0');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error checking admin notifications:', error);
+                    adminButton.setAttribute('data-count', '0');
+                });
+        }
+        
+        // Uncomment to implement real notification checking
+        // checkAdminNotifications();
+        // setInterval(checkAdminNotifications, 60000); // Check every minute
+    }
+});

@@ -1,193 +1,187 @@
-:root {
-    --primary-color: #25D366;
-    --secondary-color: #128C7E;
-    --text-color: #333;
-    --bg-color: #f5f5f5;
-    --card-bg: #fff;
-    --error-color: #e74c3c;
-    --success-color: #2ecc71;
-}
-
 body {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    background-color: var(--bg-color);
     margin: 0;
     padding: 0;
+    font-family: 'Segoe UI', sans-serif;
+    background-image: url('../images/background.jpg');
+    background-size: cover;
+    background-position: center;
     height: 100vh;
     display: flex;
     align-items: center;
     justify-content: center;
-    background-image: url('/static/images/background.jpg');
-    background-size: cover;
-    background-position: center;
+    backdrop-filter: blur(6px);
 }
 
-.auth-container {
+.container {
+    display: flex;
+    width: 85%;
+    max-width: 1100px;
+    background-color: rgba(255, 255, 255, 0.2);
+    border-radius: 20px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
+    overflow: hidden;
+    backdrop-filter: blur(10px);
+}
+
+.form {
+    flex: 1;
+    padding: 40px;
+    background-color: rgba(255, 255, 255, 0.4);
+}
+
+.login-form {
+    border-right: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.register-form {
+    border-left: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+h2 {
+    text-align: center;
+    margin-bottom: 20px;
+    font-size: 24px;
+}
+
+input[type="text"],
+input[type="email"],
+input[type="password"] {
+    width: 100%;
+    padding: 10px;
+    margin: 10px 0;
+    background-color: rgba(255, 255, 255, 0.5);
+    border: none;
+    border-radius: 5px;
+    box-sizing: border-box;
+}
+
+.email-group {
+    position: relative;
+    margin-bottom: 5px;
+}
+
+.send-code {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #007bff;
+    text-decoration: none;
+    font-size: 14px;
+    cursor: pointer;
+}
+
+send-code:hover {
+    text-decoration: underline;
+    color: #0056b3;
+}
+
+button {
+    width: 100%;
+    padding: 10px;
+    background-color: #007bff;
+    border: none;
+    border-radius: 5px;
+    color: white;
+    cursor: pointer;
+    margin-top: 10px;
+    font-size: 16px;
+}
+
+button:hover {
+    background-color: #0056b3;
+}
+
+.upload-block {
     display: flex;
     flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    min-height: 100vh;
-    padding: 20px;
+    gap: 10px;
+    margin: 10px 0;
 }
 
-.auth-card {
-    background: white;
-    border-radius: 8px;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-    width: 100%;
-    max-width: 400px;
-    padding: 30px;
-}
-
-.auth-header {
-    text-align: center;
-    margin-bottom: 30px;
-}
-
-.auth-header h1 {
-    font-size: 24px;
-    color: #128C7E;
-    margin: 0 0 10px 0;
-}
-
-.auth-header p {
-    color: #666;
-    margin: 0;
-}
-
-.form-group {
-    margin-bottom: 20px;
-}
-
-.form-group label {
-    display: block;
-    margin-bottom: 8px;
-    font-weight: 500;
+.upload-block label {
+    font-size: 14px;
     color: #333;
 }
 
-.form-group input {
-    width: 100%;
-    padding: 12px;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    font-size: 16px;
-}
-
-.form-group input:focus {
-    border-color: #128C7E;
-    outline: none;
-    box-shadow: 0 0 0 2px rgba(18, 140, 126, 0.2);
-}
-
-.input-with-icon {
-    position: relative;
-}
-
-.input-with-icon i {
-    position: absolute;
-    left: 15px;
-    top: 50%;
-    transform: translateY(-50%);
-    color: #999;
-}
-
-.input-with-icon input {
-    width: 100%;
-    padding: 12px 15px 12px 40px;
-    border: 1px solid #ddd;
-    border-radius: 5px;
-    font-size: 14px;
-}
-
-.input-with-icon input:focus {
-    outline: none;
-    border-color: var(--primary-color);
-    box-shadow: 0 0 0 2px rgba(37, 211, 102, 0.2);
-}
-
-.btn {
-    width: 100%;
-    padding: 12px;
-    border: none;
-    border-radius: 5px;
-    font-size: 16px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: background-color 0.2s;
-}
-
-.btn-primary {
-    width: 100%;
-    padding: 12px;
-    background: #128C7E;
-    color: white;
-    border: none;
-    border-radius: 4px;
-    font-size: 16px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: background 0.3s ease;
-}
-
-.btn-primary:hover {
-    background: #0e6b60;
-}
-
-.auth-alternative {
-    margin-top: 20px;
+p {
     text-align: center;
-    font-size: 14px;
-    color: var(--text-color);
+    margin-top: 15px;
 }
 
-.auth-alternative a {
-    color: var(--primary-color);
-    text-decoration: none;
-    font-weight: 500;
-}
-
-.auth-alternative a:hover {
-    text-decoration: underline;
-}
-
-.auth-links {
-    text-align: center;
-    margin-top: 20px;
-}
-
-.auth-links a {
-    color: #128C7E;
+a {
+    color: #007bff;
     text-decoration: none;
 }
 
-.auth-links a:hover {
+a:hover {
     text-decoration: underline;
 }
 
 .message {
-    margin-top: 20px;
-    padding: 12px;
-    border-radius: 4px;
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 12px 24px;
+    border-radius: 5px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+    z-index: 1000;
     display: none;
+    transition: opacity 0.3s ease;
 }
 
 .message.error {
-    background: #ffebee;
-    color: #c62828;
-    display: block;
+    background-color: rgba(255, 87, 87, 0.9);
+    color: white;
 }
 
 .message.success {
-    background: #e8f5e9;
-    color: #2e7d32;
-    display: block;
+    background-color: rgba(75, 181, 67, 0.9);
+    color: white;
 }
 
-/* Responsiveness */
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .container {
+        flex-direction: column;
+        width: 90%;
+        max-width: 500px;
+    }
+
+    .login-form,
+    .register-form {
+        border: none;
+    }
+
+    .form {
+        padding: 30px 20px;
+    }
+
+    h2 {
+        font-size: 22px;
+    }
+
+    /* On mobile, hide one form */
+    .register-form {
+        display: none;
+    }
+}
+
 @media (max-width: 480px) {
-    .auth-card {
-        padding: 20px;
+    .container {
+        width: 95%;
+    }
+
+    .form {
+        padding: 20px 15px;
+    }
+
+    .upload-block {
+        flex-direction: column;
+    }
+
+    h2 {
+        font-size: 20px;
     }
 }

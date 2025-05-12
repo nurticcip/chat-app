@@ -1,7 +1,171 @@
-<div class="sidebar-footer">
-    <div class="admin-link">
-        <a href="/admin" title="Admin Dashboard">
-            <i class="fas fa-user-shield"></i>
-        </a>
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Чат</title>
+    <link rel="stylesheet" href="/static/css/main.css">
+    <link rel="stylesheet" href="/static/css/chat.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <div class="user-avatar">
+                    <img id="user-avatar" src="/static/images/avatar.png" alt="Аватар">
+                </div>
+                <div class="user-name" id="current-user-name">Загрузка...</div>
+                <div class="sidebar-actions">
+                    <button id="new-chat-btn" title="Новый чат">
+                        <i class="fas fa-plus"></i>
+                    </button>
+                    <button id="new-group-btn" title="Новая группа">
+                        <i class="fas fa-users"></i>
+                    </button>
+                    <button id="theme-toggle" title="Сменить тему">
+                        <i class="fas fa-moon"></i>
+                    </button>
+                </div>
+            </div>
+            
+            <div class="search-container">
+                <div class="search-input">
+                    <i class="fas fa-search"></i>
+                    <input type="text" id="search-input" placeholder="Поиск...">
+                </div>
+            </div>
+            
+            <!-- This is where the chat list should be -->
+            <div class="chat-list">
+                <div class="loading-chats">Загрузка чатов...</div>
+            </div>
+            
+            <div class="sidebar-footer">
+                <div class="admin-link">
+                    <a href="/admin" title="Admin Dashboard">
+                        <i class="fas fa-user-shield"></i>
+                    </a>
+                </div>
+                <div class="logout">
+                    <a href="/logout" title="Выход">
+                        <i class="fas fa-sign-out-alt"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Main Chat Area -->
+        <div class="main-content">
+            <!-- Welcome Screen -->
+            <div id="welcome-screen" class="welcome-screen">
+                <div class="welcome-content">
+                    <div class="welcome-logo">
+                        <i class="fab fa-whatsapp"></i>
+                    </div>
+                    <h1>Добро пожаловать в чат</h1>
+                    <p>Выберите чат слева или начните новый разговор</p>
+                </div>
+            </div>
+            
+            <!-- Chat Interface -->
+            <div id="chat-interface" class="chat-interface" style="display: none;">
+                <div class="chat-header">
+                    <div class="chat-header-info">
+                        <button id="back-to-chats" class="back-button">
+                            <i class="fas fa-arrow-left"></i>
+                        </button>
+                        <div class="chat-header-avatar">
+                            <img id="chat-avatar" src="/static/images/avatar.png" alt="Avatar">
+                        </div>
+                        <div class="chat-header-title">Выберите чат</div>
+                    </div>
+                    <div class="chat-header-actions">
+                        <button class="chat-header-icon" id="chat-search">
+                            <i class="fas fa-search"></i>
+                        </button>
+                        <button class="chat-header-icon" id="chat-info">
+                            <i class="fas fa-info-circle"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="messages-container">
+                    <div class="no-chat-selected">Выберите чат, чтобы начать общение</div>
+                </div>
+                
+                <div class="message-form-container">
+                    <form id="message-form">
+                        <button type="button" id="attach-file">
+                            <i class="fas fa-paperclip"></i>
+                        </button>
+                        <button type="button" id="emoji-btn">
+                            <i class="fas fa-smile"></i>
+                        </button>
+                        <div class="message-input-container">
+                            <input type="file" id="file-input" accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.zip,.rar" style="display: none;">
+                            <div class="selected-file" style="display: none;"></div>
+                            <textarea id="message-input" placeholder="Введите сообщение..."></textarea>
+                        </div>
+                        <button type="button" id="send-message-btn">
+                            <i class="fas fa-paper-plane"></i>
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
     </div>
-</div>
+
+    <!-- Modal Windows -->
+    <div id="new-chat-modal" class="modal" style="display: none;">
+        <!-- Modal content for new chat -->
+    </div>
+    
+    <div id="new-group-modal" class="modal" style="display: none;">
+        <!-- Modal content for new group -->
+    </div>
+    
+    <div id="group-info-modal" class="modal" style="display: none;">
+        <!-- Modal content for group info -->
+    </div>
+
+    <!-- Scripts -->
+    <script src="/static/js/chat.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize chat component
+            initChatComponent();
+            
+            // Initialize theme toggle
+            const themeToggle = document.getElementById('theme-toggle');
+            if (themeToggle) {
+                themeToggle.addEventListener('click', function() {
+                    document.body.classList.toggle('dark-theme');
+                    const isDarkTheme = document.body.classList.contains('dark-theme');
+                    localStorage.setItem('darkTheme', isDarkTheme ? 'true' : 'false');
+                    
+                    // Update icon
+                    const icon = this.querySelector('i');
+                    if (isDarkTheme) {
+                        icon.classList.remove('fa-moon');
+                        icon.classList.add('fa-sun');
+                    } else {
+                        icon.classList.remove('fa-sun');
+                        icon.classList.add('fa-moon');
+                    }
+                });
+                
+                // Check saved theme preference
+                const isDarkTheme = localStorage.getItem('darkTheme') === 'true';
+                if (isDarkTheme) {
+                    document.body.classList.add('dark-theme');
+                    const icon = themeToggle.querySelector('i');
+                    icon.classList.remove('fa-moon');
+                    icon.classList.add('fa-sun');
+                }
+            }
+        });
+    </script>
+</body>
+</html>

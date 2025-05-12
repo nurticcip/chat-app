@@ -1240,7 +1240,7 @@ body::after {
     display: none;
 }
 
-/* Admin button styling */
+/* Enhanced Admin Button Styling */
 .admin-button {
     display: flex;
     align-items: center;
@@ -1249,22 +1249,74 @@ body::after {
     height: 36px;
     border-radius: 50%;
     background-color: transparent;
-    color: var(--icon-color);
+    color: var(--icon-color, #555);
     border: none;
     cursor: pointer;
-    margin-left: 8px;
+    margin-left: 10px;
+    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    position: relative;
+    overflow: hidden;
+}
+
+.admin-button i {
+    font-size: 18px;
     transition: all 0.3s ease;
+    transform-origin: center;
 }
 
 .admin-button:hover {
-    background-color: rgba(0, 0, 0, 0.1);
-    color: var(--primary-color);
+    background-color: rgba(37, 211, 102, 0.15);
+    color: #128C7E;
+    transform: scale(1.1);
+}
+
+.admin-button:hover i {
+    transform: rotate(15deg);
+}
+
+.admin-button:active {
+    transform: scale(0.95);
+    background-color: rgba(37, 211, 102, 0.25);
 }
 
 .dark-theme .admin-button {
-    color: var(--dark-icon-color);
+    color: #aaa;
 }
 
 .dark-theme .admin-button:hover {
-    background-color: rgba(255, 255, 255, 0.1);
+    background-color: rgba(37, 211, 102, 0.2);
+    color: #25D366;
+    box-shadow: 0 0 8px rgba(37, 211, 102, 0.4);
+}
+
+/* Admin notification badge */
+.admin-button[data-count]:not([data-count="0"])::after {
+    content: attr(data-count);
+    position: absolute;
+    top: -2px;
+    right: -2px;
+    min-width: 16px;
+    height: 16px;
+    padding: 0 4px;
+    border-radius: 8px;
+    background-color: #ff4757;
+    color: white;
+    font-size: 10px;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transform: scale(1);
+    transition: transform 0.2s ease;
+}
+
+/* Pulsating animation for admin notifications */
+@keyframes admin-pulse {
+    0% { box-shadow: 0 0 0 0 rgba(255, 71, 87, 0.7); }
+    70% { box-shadow: 0 0 0 10px rgba(255, 71, 87, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(255, 71, 87, 0); }
+}
+
+.admin-button[data-count]:not([data-count="0"]) {
+    animation: admin-pulse 2s infinite;
 }

@@ -309,9 +309,25 @@ def ping():
     # Обновляем timestamp последней активности пользователя в БД
     try:
         conn = get_db_connection()
-        conn.execute('UPDATE users SET last_active = ? WHERE id = ?', 
-                    (datetime.now().isoformat(), session['user_id']))
-        conn.commit()
+        # Check if last_active column exists
+        cursor = conn.cursor()
+        cursor.execute("PRAGMA table_info(users)")
+        columns = [col[1] for col in cursor.fetchall()]
+        
+        if 'last_active' in columns:
+            conn.execute('UPDATE users SET last_active = ? WHERE id = ?', 
+                        (datetime.now().isoformat(), session['user_id']))
+            conn.commit()
+        else:
+            # If column doesn't exist, add it to the database schema
+            try:
+                conn.execute('ALTER TABLE users ADD COLUMN last_active TEXT')
+                conn.execute('UPDATE users SET last_active = ? WHERE id = ?', 
+                            (datetime.now().isoformat(), session['user_id']))
+                conn.commit()
+                print("Added last_active column to users table")
+            except Exception as alter_error:
+                print(f"Error adding last_active column: {alter_error}")
         conn.close()
     except Exception as e:
         print(f"Error updating user activity: {e}")

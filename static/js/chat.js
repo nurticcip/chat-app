@@ -37,6 +37,81 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }, 1000);
 });
+
+// Массив эмодзи для быстрого доступа
+const emojiList = [
+    '😀', '😃', '😄', '😁', '😆', '😅', '🤣', '😂', '🙂', '🙃',
+    '😉', '😊', '😇', '😍', '🥰', '😘', '😗', '😙', '😚', '😋',
+    '😛', '😜', '😝', '🤑', '🤗', '🤔', '🤐', '🤨', '😐', '😑',
+    '😶', '😏', '😒', '🙄', '😬', '🤥', '😌', '😔', '😪', '🤤',
+    '😴', '😷', '🤒', '🤕', '🤢', '🤧', '🥵', '🥶', '🥴', '😵',
+    '❤️', '🧡', '💛', '💚', '💙', '💜', '🖤', '💔', '❣️', '💕',
+    '💞', '💓', '💗', '💖', '💘', '💝', '💟', '👍', '👎', '👌',
+    '✌️', '🤞', '🤟', '🤘', '👈', '👉', '👆', '👇', '☝️', '👋',
+    '🎉', '🎈', '🎁', '🎂', '🎊', '✨', '💯', '💥', '💫', '🔥'
+];
+
+// Инициализация панели эмодзи
+function initEmojiPicker() {
+    // Создаем контейнер для emoji picker, если его еще нет
+    if (!document.getElementById('emoji-picker')) {
+        const emojiPicker = document.createElement('div');
+        emojiPicker.id = 'emoji-picker';
+        emojiPicker.className = 'emoji-picker';
+        
+        let emojiContent = '';
+        emojiList.forEach(emoji => {
+            emojiContent += `<div class="emoji-item" data-emoji="${emoji}">${emoji}</div>`;
+        });
+        
+        emojiPicker.innerHTML = emojiContent;
+        document.querySelector('.message-form-container').appendChild(emojiPicker);
+        
+        // Добавляем обработчики для выбора эмодзи
+        document.querySelectorAll('.emoji-item').forEach(item => {
+            item.addEventListener('click', function() {
+                const emoji = this.dataset.emoji;
+                insertEmoji(emoji);
+            });
+        });
+        
+        // Закрытие picker при клике вне него
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('#emoji-picker') && !e.target.closest('#emoji-btn')) {
+                emojiPicker.classList.remove('active');
+            }
+        });
+    }
+}
+
+// Переключение отображения панели эмодзи
+function toggleEmojiPicker() {
+    const emojiPicker = document.getElementById('emoji-picker');
+    if (emojiPicker) {
+        emojiPicker.classList.toggle('active');
+    }
+}
+
+// Вставка эмодзи в поле ввода сообщения
+function insertEmoji(emoji) {
+    const messageInput = document.getElementById('message-input');
+    if (messageInput) {
+        // Сохраняем текущие позиции курсора
+        const start = messageInput.selectionStart;
+        const end = messageInput.selectionEnd;
+        const text = messageInput.value;
+        
+        // Вставляем эмодзи в текущую позицию курсора
+        messageInput.value = text.substring(0, start) + emoji + text.substring(end);
+        
+        // Восстанавливаем позицию курсора после вставки
+        messageInput.selectionStart = messageInput.selectionEnd = start + emoji.length;
+        
+        // Фокусируемся на поле ввода
+        messageInput.focus();
+    }
+}
+
 // Инициализация компонента чата
 function initChatComponent() {
     console.log("Инициализация компонента чата...");
@@ -58,6 +133,15 @@ function initChatComponent() {
     if (sendMessageBtn) {
         sendMessageBtn.addEventListener('click', sendMessage);
     }
+    
+    // Обработчик для кнопки эмодзи
+    const emojiBtn = document.getElementById('emoji-btn');
+    if (emojiBtn) {
+        emojiBtn.addEventListener('click', toggleEmojiPicker);
+    }
+    
+    // Инициализация emoji picker
+    initEmojiPicker();
     
     // Обработчик для поля ввода сообщения (отправка по Enter)
     const messageInput = document.getElementById('message-input');
@@ -109,8 +193,17 @@ function initChatComponent() {
 
 // Запуск периодического обновления чатов
 function startChatUpdates() {
+    // Проверяем, не переходим ли мы из админки
+    if (localStorage.getItem('adminNavigation') === 'true') {
+        localStorage.removeItem('adminNavigation');
+        return; // Не запускаем обновление, если переходим из админки
+    }
+    
     // Обновляем список чатов сразу при запуске
     updateChatsList();
+    
+    // Предотвращаем создание дублирующихся интервалов
+    if (chatListUpdateInterval) clearInterval(chatListUpdateInterval);
     
     // Устанавливаем интервал обновления для списка чатов - более частое обновление (1 секунда)
     chatListUpdateInterval = setInterval(updateChatsList, 1000);
@@ -248,22 +341,47 @@ function renderChatsList(chats) {
     });
 }
 
-// Форматирование времени сообщения
+// Форматирование времени сообщения в UTC+6
 function formatMessageTime(date) {
-    const now = new Date();
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
+    // Convert to UTC+6
+    const utcOffset = 6 * 60 * 60 * 1000; // 6 hours in milliseconds
     
-    if (date >= today) {
-        // Сегодня - показываем только время
-        return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    } else if (date >= yesterday) {
-        // Вчера
+    // Create new Date objects in UTC+6 timezone
+    const dateInUtc6 = new Date(date.getTime() + utcOffset);
+    const nowInUtc6 = new Date(Date.now() + utcOffset);
+    
+    // Get year, month, day components in UTC+6 timezone
+    const dateYear = dateInUtc6.getUTCFullYear();
+    const dateMonth = dateInUtc6.getUTCMonth();
+    const dateDay = dateInUtc6.getUTCDate();
+    
+    const todayYear = nowInUtc6.getUTCFullYear();
+    const todayMonth = nowInUtc6.getUTCMonth();
+    const todayDay = nowInUtc6.getUTCDate();
+    
+    // Check if date is today
+    const isToday = dateYear === todayYear && dateMonth === todayMonth && dateDay === todayDay;
+    
+    // Check if date is yesterday
+    const yesterdayInUtc6 = new Date(nowInUtc6.getTime() - 24 * 60 * 60 * 1000);
+    const yesterdayYear = yesterdayInUtc6.getUTCFullYear();
+    const yesterdayMonth = yesterdayInUtc6.getUTCMonth();
+    const yesterdayDay = yesterdayInUtc6.getUTCDate();
+    
+    const isYesterday = dateYear === yesterdayYear && dateMonth === yesterdayMonth && dateDay === yesterdayDay;
+    
+    if (isToday) {
+        // Format time (HH:MM) in UTC+6
+        const hours = dateInUtc6.getUTCHours().toString().padStart(2, '0');
+        const minutes = dateInUtc6.getUTCMinutes().toString().padStart(2, '0');
+        return `${hours}:${minutes}`;
+    } else if (isYesterday) {
         return 'Вчера';
     } else {
-        // Другие даты
-        return date.toLocaleDateString();
+        // Format date (DD.MM.YYYY) in UTC+6
+        const day = dateDay.toString().padStart(2, '0');
+        const month = (dateMonth + 1).toString().padStart(2, '0');
+        return `${day}.${month}.${dateYear}`;
     }
 }
 
@@ -1776,11 +1894,47 @@ window.chatModule = {
     updateCurrentChatMessages,
     updateUserActivity,
     keepSessionAlive,
-    openGroupInfoModal
+    openGroupInfoModal,
+    // Экспортируем сами интервалы, чтобы можно было их очистить из других модулей
+    get chatListUpdateInterval() { return chatListUpdateInterval; },
+    get activeChatlUpdateInterval() { return activeChatlUpdateInterval; }
 };
 
 
 function initTranslationFeature() {
+    // Create a single menu element to be reused for all dropdowns
+    const translateMenu = document.createElement('div');
+    translateMenu.className = 'translate-menu';
+    translateMenu.innerHTML = `
+        <div class="translate-option to-russian">
+            <span class="translate-icon">🔄</span>
+            <span>Перевод</span>
+        </div>
+        <div class="translate-option to-original">
+            <span class="translate-icon">↩️</span>
+            <span>Оригинал</span>
+        </div>
+        <div class="translate-divider"></div>
+        <div class="translate-option reply-option">
+            <span class="translate-icon">↩️</span>
+            <span>Reply</span>
+        </div>
+        <div class="translate-option edit-option">
+            <span class="translate-icon">✏️</span>
+            <span>Edit</span>
+        </div>
+        <div class="translate-option delete-option">
+            <span class="translate-icon">🗑️</span>
+            <span>Delete</span>
+        </div>
+    `;
+    document.body.appendChild(translateMenu);
+    
+    // Current active dropdown and data
+    let activeDropdown = null;
+    let currentMessage = null;
+    let currentMessageText = null;
+    
     // Add translation dropdown to all messages
     function addTranslationDropdowns() {
         document.querySelectorAll('.message:not(.has-translation-dropdown)').forEach(message => {
@@ -1791,36 +1945,10 @@ function initTranslationFeature() {
             
             message.classList.add('has-translation-dropdown');
             
-            // Create dropdown elements with expanded options
+            // Create dropdown button only
             const translateDropdown = document.createElement('div');
             translateDropdown.className = 'translate-dropdown';
-            translateDropdown.innerHTML = `
-                <div class="translate-dropdown-icon">▼</div>
-                <div class="translate-menu">
-                    <div class="translate-option to-russian">
-                        <span class="translate-icon">🔄</span>
-                        <span>Перевод</span>
-                    </div>
-                    <div class="translate-option to-original">
-                        <span class="translate-icon">↩️</span>
-                        <span>Оригинал</span>
-                    </div>
-                    <div class="translate-divider"></div>
-                    <div class="translate-option reply-option">
-                        <span class="translate-icon">↩️</span>
-                        <span>Reply</span>
-                    </div>
-                    <div class="translate-option edit-option">
-                        <span class="translate-icon">✏️</span>
-                        <span>Edit</span>
-                    </div>
-                    <div class="translate-option delete-option">
-                        <span class="translate-icon">🗑️</span>
-                        <span>Delete</span>
-                    </div>
-                </div>
-            `;
-            
+            translateDropdown.innerHTML = `<div class="translate-dropdown-icon">▼</div>`;
             messageContent.appendChild(translateDropdown);
             
             // Store the original text
@@ -1839,237 +1967,345 @@ function initTranslationFeature() {
             // Toggle dropdown menu
             translateDropdown.addEventListener('click', function(e) {
                 e.stopPropagation();
-                this.classList.toggle('active');
+                
+                // If this dropdown is already active, hide menu and exit
+                if (activeDropdown === this) {
+                    translateMenu.classList.remove('active');
+                    activeDropdown = null;
+                    return;
+                }
+                
+                // Set current active elements
+                activeDropdown = this;
+                currentMessage = message;
+                currentMessageText = messageText;
+                
+                // Position the menu next to the dropdown
+                const rect = this.getBoundingClientRect();
+                translateMenu.style.left = rect.right + 'px';
+                translateMenu.style.top = rect.top + 'px';
+                
+                // Check if menu would go off-screen and reposition if needed
+                setTimeout(() => {
+                    const menuRect = translateMenu.getBoundingClientRect();
+                    if (menuRect.right > window.innerWidth) {
+                        translateMenu.style.left = (rect.left - menuRect.width) + 'px';
+                    }
+                    if (menuRect.bottom > window.innerHeight) {
+                        translateMenu.style.top = (rect.bottom - menuRect.height) + 'px';
+                    }
+                }, 0);
+                
+                // Set the proper options visible based on message type
+                const isOwnMessage = message.classList.contains('message-own');
+                translateMenu.querySelector('.edit-option').style.display = isOwnMessage ? 'flex' : 'none';
+                translateMenu.querySelector('.delete-option').style.display = isOwnMessage ? 'flex' : 'none';
+                
+                // Show menu
+                translateMenu.classList.add('active');
             });
-            
-            // Handle translation
-            translateDropdown.querySelector('.translate-option.to-russian').addEventListener('click', function(e) {
-                e.stopPropagation();
-                translateMessage(message, messageText);
-                translateDropdown.classList.remove('active');
-            });
-            
-            // Handle switch back to original
-            translateDropdown.querySelector('.translate-option.to-original').addEventListener('click', function(e) {
-                e.stopPropagation();
-                restoreOriginal(message, messageText);
-                translateDropdown.classList.remove('active');
-            });
-            
-            // Handle reply action
-            translateDropdown.querySelector('.reply-option').addEventListener('click', function(e) {
-                e.stopPropagation();
-                // Get message ID to reply to
-                const messageId = message.dataset.messageId;
-                replyToMessage(messageId, messageText.textContent);
-                translateDropdown.classList.remove('active');
-            });
-            
-            // Handle edit action (only for own messages)
-            const editOption = translateDropdown.querySelector('.edit-option');
-            if (message.classList.contains('message-own')) {
-                editOption.addEventListener('click', function(e) {
-                    e.stopPropagation();
-                    const messageId = message.dataset.messageId;
-                    editMessage(messageId, messageText);
-                    translateDropdown.classList.remove('active');
-                });
-            } else {
-                editOption.style.display = 'none'; // Hide edit option for others' messages
-            }
-            
-            // Handle delete action (only for own messages)
-            const deleteOption = translateDropdown.querySelector('.delete-option');
-            if (message.classList.contains('message-own')) {
-                deleteOption.addEventListener('click', function(e) {
-                    e.stopPropagation();
-                    const messageId = message.dataset.messageId;
-                    deleteMessage(messageId, message);
-                    translateDropdown.classList.remove('active');
-                });
-            } else {
-                deleteOption.style.display = 'none'; // Hide delete option for others' messages
-            }
         });
     }
     
+    // Handle menu option clicks
+    translateMenu.querySelector('.to-russian').addEventListener('click', function(e) {
+        e.stopPropagation();
+        if (currentMessage && currentMessageText) {
+            translateMessage(currentMessage, currentMessageText);
+        }
+        translateMenu.classList.remove('active');
+        activeDropdown = null;
+    });
+    
+    translateMenu.querySelector('.to-original').addEventListener('click', function(e) {
+        e.stopPropagation();
+        if (currentMessage && currentMessageText) {
+            restoreOriginal(currentMessage, currentMessageText);
+        }
+        translateMenu.classList.remove('active');
+        activeDropdown = null;
+    });
+    
+    translateMenu.querySelector('.reply-option').addEventListener('click', function(e) {
+        e.stopPropagation();
+        if (currentMessage && currentMessageText) {
+            const messageId = currentMessage.dataset.messageId;
+            replyToMessage(messageId, currentMessageText.textContent);
+        }
+        translateMenu.classList.remove('active');
+        activeDropdown = null;
+    });
+    
+    translateMenu.querySelector('.edit-option').addEventListener('click', function(e) {
+        e.stopPropagation();
+        if (currentMessage && currentMessageText) {
+            const messageId = currentMessage.dataset.messageId;
+            editMessage(messageId, currentMessageText);
+        }
+        translateMenu.classList.remove('active');
+        activeDropdown = null;
+    });
+    
+    translateMenu.querySelector('.delete-option').addEventListener('click', function(e) {
+        e.stopPropagation();
+        if (currentMessage) {
+            const messageId = currentMessage.dataset.messageId;
+            deleteMessage(messageId, currentMessage);
+        }
+        translateMenu.classList.remove('active');
+        activeDropdown = null;
+    });
+    
+    // Close menu when clicking outside
+    document.addEventListener('click', function() {
+        translateMenu.classList.remove('active');
+        activeDropdown = null;
+    });
+    
     // Translate a message
     function translateMessage(messageElement, textElement) {
+        // Get the original text from the hidden storage
+        const originalTextElement = messageElement.querySelector('.original-text');
+        if (!originalTextElement) return;
+        
+        const originalText = originalTextElement.innerHTML;
+        
         // Show loading state
-        const originalText = messageElement.querySelector('.original-text').innerHTML;
         textElement.innerHTML = 'Переводим...';
         
-        // Call translation API (here using a mock function for demo)
-        translateText(originalText)
-            .then(translatedText => {
-                textElement.innerHTML = translatedText;
-                messageElement.classList.add('translated');
+        // Use Google Translate API directly
+        fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=ru&dt=t&q=${encodeURIComponent(originalText)}`)
+            .then(response => response.json())
+            .then(data => {
+                // The response structure is a nested array where translations are in the first element
+                // Each segment is an array where the first item is the translated text
+                let translatedText = '';
+                if (data && Array.isArray(data[0])) {
+                    // Concatenate all translated segments
+                    data[0].forEach(segment => {
+                        if (segment && segment[0]) {
+                            translatedText += segment[0];
+                        }
+                    });
+                }
+                
+                if (translatedText) {
+                    textElement.innerHTML = translatedText;
+                    messageElement.classList.add('translated');
+                    console.log('Translation successful:', translatedText);
+                } else {
+                    textElement.innerHTML = originalText;
+                    console.error('Translation error: Empty translation result');
+                    alert('Ошибка перевода: Пустой результат перевода');
+                }
             })
             .catch(error => {
                 console.error('Translation error:', error);
                 textElement.innerHTML = originalText;
-                alert('Ошибка перевода: ' + error.message);
+                alert('Ошибка перевода: ' + (error.message || 'Неизвестная ошибка'));
             });
     }
     
-    // Restore original message
+    // Restore original message text
     function restoreOriginal(messageElement, textElement) {
-        const originalText = messageElement.querySelector('.original-text').innerHTML;
-        textElement.innerHTML = originalText;
+        const originalTextElement = messageElement.querySelector('.original-text');
+        if (!originalTextElement) return;
+        
+        textElement.innerHTML = originalTextElement.innerHTML;
         messageElement.classList.remove('translated');
     }
     
     // Function to reply to a message
     function replyToMessage(messageId, text) {
-        // Get the message input field
         const messageInput = document.getElementById('message-input');
-        
-        // Add reply reference to the input field
-        messageInput.value = `[Reply to: "${text.substring(0, 30)}${text.length > 30 ? '...' : ''}"] `;
-        
-        // Store the message ID being replied to (can be used when sending)
+        const replyContainer = document.createElement('div');
+        replyContainer.className = 'reply-container';
+        replyContainer.innerHTML = `
+            <div class="reply-text">${text.substring(0, 50)}${text.length > 50 ? '...' : ''}</div>
+            <button class="cancel-reply-btn">✖</button>
+        `;
+        document.querySelector('.message-input-container').prepend(replyContainer);
+
+        // Store the message ID being replied to
         messageInput.dataset.replyToId = messageId;
-        
-        // Focus on the input field
-        messageInput.focus();
-        
-        // You might want to add visual indication of reply mode
-        console.log(`Replying to message ID: ${messageId}`);
+
+        // Cancel reply
+        replyContainer.querySelector('.cancel-reply-btn').addEventListener('click', () => {
+            replyContainer.remove();
+            delete messageInput.dataset.replyToId;
+        });
     }
     
     // Function to edit a message
     function editMessage(messageId, messageTextElement) {
-        // Get the original text
+        // Store the original message and parent elements
+        const messageElement = messageTextElement.closest('.message');
+        const messageContent = messageTextElement.closest('.message-content');
         const originalText = messageTextElement.textContent;
         
-        // Create an input field for editing
+        // Create editing UI
+        const editContainer = document.createElement('div');
+        editContainer.className = 'edit-message-container';
+        
+        // Create textarea with original content
         const inputField = document.createElement('textarea');
         inputField.className = 'edit-message-input';
         inputField.value = originalText;
         
-        // Replace message text with input field
-        messageTextElement.innerHTML = '';
-        messageTextElement.appendChild(inputField);
+        // Auto-focus and place cursor at the end
+        setTimeout(() => {
+            inputField.focus();
+            inputField.setSelectionRange(inputField.value.length, inputField.value.length);
+        }, 10);
         
-        // Focus and select all text
-        inputField.focus();
-        inputField.select();
+        // Auto-resize textarea
+        inputField.addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = (this.scrollHeight) + 'px';
+        });
         
-        // Handle saving on Enter
-        inputField.addEventListener('keypress', function(e) {
+        // Create edit controls
+        const editControls = document.createElement('div');
+        editControls.className = 'edit-message-controls';
+        
+        // Add cancel button
+        const cancelButton = document.createElement('button');
+        cancelButton.className = 'edit-message-cancel';
+        cancelButton.innerHTML = '<i class="fas fa-times"></i>';
+        cancelButton.title = 'Отмена';
+        
+        // Add save button
+        const saveButton = document.createElement('button');
+        saveButton.className = 'edit-message-save';
+        saveButton.innerHTML = '<i class="fas fa-check"></i>';
+        saveButton.title = 'Сохранить';
+        
+        // Build the UI
+        editControls.appendChild(cancelButton);
+        editControls.appendChild(saveButton);
+        editContainer.appendChild(inputField);
+        editContainer.appendChild(editControls);
+        
+        // Replace the message text with the editing interface
+        messageTextElement.style.display = 'none';
+        messageContent.insertBefore(editContainer, messageTextElement);
+        
+        // Trigger resize to match content
+        setTimeout(() => {
+            inputField.style.height = 'auto';
+            inputField.style.height = (inputField.scrollHeight) + 'px';
+        }, 0);
+        
+        // Cancel editing
+        cancelButton.addEventListener('click', () => {
+            messageTextElement.style.display = '';
+            editContainer.remove();
+        });
+        
+        // Handle Escape key for cancel
+        inputField.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                cancelButton.click();
+            }
+        });
+        
+        // Save changes
+        function saveEdit() {
+            const newText = inputField.value.trim();
+            if (!newText) {
+                // Don't allow empty messages
+                inputField.classList.add('error');
+                setTimeout(() => inputField.classList.remove('error'), 800);
+                return;
+            }
+            
+            // Show loading state
+            saveButton.disabled = true;
+            saveButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+            
+            fetch(`/api/chat/message/${messageId}/edit`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ content: newText }),
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Update message and show edited indicator
+                    messageTextElement.textContent = newText;
+                    messageTextElement.style.display = '';
+                    editContainer.remove();
+                    
+                    // Ensure edited indicator exists or add it
+                    let editedIndicator = messageElement.querySelector('.message-edited');
+                    if (!editedIndicator) {
+                        const messageInfo = messageElement.querySelector('.message-info');
+                        if (messageInfo) {
+                            editedIndicator = document.createElement('span');
+                            editedIndicator.className = 'message-edited';
+                            editedIndicator.textContent = '(изм.)';
+                            messageInfo.appendChild(editedIndicator);
+                        }
+                    }
+                    
+                    // Highlight briefly to show change
+                    messageTextElement.classList.add('message-just-edited');
+                    setTimeout(() => messageTextElement.classList.remove('message-just-edited'), 1500);
+                } else {
+                    alert('Ошибка при редактировании сообщения');
+                    messageTextElement.style.display = '';
+                    editContainer.remove();
+                }
+            })
+            .catch(() => {
+                alert('Ошибка сети при редактировании сообщения');
+                messageTextElement.style.display = '';
+                editContainer.remove();
+            });
+        }
+        
+        // Save on button click
+        saveButton.addEventListener('click', saveEdit);
+        
+        // Save on Enter (but allow Shift+Enter for new line)
+        inputField.addEventListener('keydown', (e) => {
             if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
-                const newText = this.value.trim();
-                
-                // If empty, restore original text
-                if (!newText) {
-                    messageTextElement.innerHTML = originalText;
-                    return;
-                }
-                
-                // Send update to server
-                updateMessageOnServer(messageId, newText, messageTextElement);
+                saveEdit();
             }
-        });
-        
-        // Handle canceling on Escape
-        inputField.addEventListener('keydown', function(e) {
-            if (e.key === 'Escape') {
-                messageTextElement.innerHTML = originalText;
-            }
-        });
-        
-        console.log(`Editing message ID: ${messageId}`);
-    }
-    
-    // Function to save edited message
-    function updateMessageOnServer(messageId, newText, messageTextElement) {
-        // Show loading state
-        const originalText = messageTextElement.querySelector('.edit-message-input').value;
-        messageTextElement.innerHTML = 'Сохранение...';
-        
-        // Make API request to update message
-        fetch(`/api/chat/message/${messageId}/edit`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ content: newText })
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                // Update the message with the new text
-                messageTextElement.innerHTML = newText;
-                // Maybe add an "edited" indicator if not already present
-            } else {
-                // Show error and restore original
-                messageTextElement.innerHTML = originalText;
-                alert('Failed to update message: ' + data.message);
-            }
-        })
-        .catch(error => {
-            console.error('Error updating message:', error);
-            messageTextElement.innerHTML = originalText;
-            alert('Error updating message');
         });
     }
     
     // Function to delete a message
     function deleteMessage(messageId, messageElement) {
-        if (confirm('Are you sure you want to delete this message?')) {
-            // Show loading state
-            messageElement.classList.add('deleting');
-            
-            // Make API request to delete message
-            fetch(`/api/chat/message/${messageId}/delete`, {
-                method: 'POST'
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    // Animate removal
-                    messageElement.style.height = messageElement.offsetHeight + 'px';
-                    setTimeout(() => {
-                        messageElement.style.height = '0';
-                        messageElement.style.opacity = '0';
-                        messageElement.style.margin = '0';
-                        messageElement.style.padding = '0';
-                        
-                        // Remove element after animation
-                        setTimeout(() => {
-                            messageElement.remove();
-                        }, 300);
-                    }, 10);
-                } else {
-                    // Show error and remove loading state
-                    messageElement.classList.remove('deleting');
-                    alert('Failed to delete message: ' + data.message);
-                }
-            })
-            .catch(error => {
-                console.error('Error deleting message:', error);
-                messageElement.classList.remove('deleting');
-                alert('Error deleting message');
-            });
-        }
-    }
-    
-    // Mock translation API function - replace with actual API call
-    function translateText(text) {
-        // Check if translate library is loaded
-        if (typeof translate !== 'undefined') {
-            // Use the translate library
-            return translate(text, { to: 'ru' })
-                .catch(error => {
-                    console.error('Translation error:', error);
-                    return `[Перевод] ${text}`;
-                });
-        } else {
-            // Fallback if translate library is not available
-            console.warn('Translation library not loaded, using fallback');
-            return Promise.resolve(`[Перевод] ${text}`);
-        }
+        const modal = document.createElement('div');
+        modal.className = 'delete-modal';
+        modal.innerHTML = `
+            <div class="delete-modal-content">
+                <p>Вы уверены, что хотите удалить это сообщение?</p>
+                <button class="confirm-delete-btn">Удалить</button>
+                <button class="cancel-delete-btn">Отмена</button>
+            </div>
+        `;
+        document.body.appendChild(modal);
+
+        // Confirm delete
+        modal.querySelector('.confirm-delete-btn').addEventListener('click', () => {
+            fetch(`/api/chat/message/${messageId}/delete`, { method: 'POST' })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        messageElement.remove();
+                    } else {
+                        alert('Ошибка при удалении сообщения');
+                    }
+                })
+                .catch(() => alert('Ошибка сети при удалении сообщения'))
+                .finally(() => modal.remove());
+        });
+
+        // Cancel delete
+        modal.querySelector('.cancel-delete-btn').addEventListener('click', () => modal.remove());
     }
     
     // Add translation features to existing messages
@@ -2090,58 +2326,10 @@ function initTranslationFeature() {
     }
 }
 
-// Улучшенный обработчик для отображения выпадающего меню
-function handleTranslateDropdown() {
-    document.addEventListener('click', function(e) {
-        // Закрываем все активные меню при клике в любом месте
-        if (!e.target.closest('.translate-dropdown')) {
-            document.querySelectorAll('.translate-dropdown.active').forEach(dropdown => {
-                dropdown.classList.remove('active');
-            });
-        }
-    });
-    
-    // Делегируем обработку клика на весь документ
-    document.addEventListener('click', function(e) {
-        const dropdownIcon = e.target.closest('.translate-dropdown-icon');
-        if (dropdownIcon) {
-            e.stopPropagation();
-            const dropdown = dropdownIcon.parentElement;
-            
-            // Сначала закрываем все открытые меню
-            document.querySelectorAll('.translate-dropdown.active').forEach(activeDropdown => {
-                if (activeDropdown !== dropdown) {
-                    activeDropdown.classList.remove('active');
-                }
-            });
-            
-            // Переключаем активное состояние
-            dropdown.classList.toggle('active');
-            
-            // Находим связанное меню
-            const menu = dropdown.nextElementSibling;
-            if (menu && menu.classList.contains('translate-menu')) {
-                // Позиционируем меню относительно кнопки
-                const rect = dropdown.getBoundingClientRect();
-                menu.style.top = rect.bottom + 5 + 'px';  // 5px отступ
-                menu.style.right = window.innerWidth - rect.right + 'px';
-                
-                // Обработчики для пунктов меню
-                menu.querySelectorAll('.translate-option').forEach(option => {
-                    option.addEventListener('click', function(e) {
-                        e.stopPropagation();
-                        dropdown.classList.remove('active');
-                        
-                        // Здесь можно добавить код для обработки выбранного действия
-                        // например, перевод, удаление и т.д.
-                    });
-                });
-            }
-        }
-    });
-}
-
-// Вызываем функцию инициализации при загрузке
+// Modify the DOMContentLoaded event listener to use the new approach
 document.addEventListener('DOMContentLoaded', function() {
-    handleTranslateDropdown();
+    // Initialize translation feature
+    initTranslationFeature();
+    
+    // ...other initialization code...
 });

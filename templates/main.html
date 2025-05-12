@@ -22,6 +22,7 @@
     <link rel="preload" href="/static/images/darkBack.jpg" as="image">
     <link rel="preload" href="/static/images/sun.png" as="image">
     <link rel="preload" href="/static/images/moon.png" as="image">
+    <link rel="preload" href="/static/images/security.png" as="image">
     
     <div class="bg-wrapper"></div>
     
@@ -42,7 +43,7 @@
                     </button>
                     <!-- Admin icon for accessing admin dashboard -->
                     <button class="admin-button" id="adminButton" title="Администрирование">
-                        <i class="fas fa-cog"></i>
+                        <img src="/static/images/security.png" id="themeIcon alt="Администрирование">
                     </button>
                 </div>
             </div>
@@ -100,6 +101,7 @@
                     </div>
                     <form id="message-form">
                         <button type="button" id="attach-file">📎</button>
+                        <button type="button" id="emoji-btn">😀</button>
                         <input type="file" id="file-input" accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.txt">
                         <div class="message-input-container">
                             <textarea id="message-input" placeholder="Введите сообщение..."></textarea>

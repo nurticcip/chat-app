@@ -6,6 +6,8 @@ import bcrypt
 import os
 from api.auth import auth_bp
 from api.chat import chat_bp
+from api.user import user_bp
+from api.admin import admin_bp  # Import our new admin blueprint
 import sqlite3
 from io import BytesIO
 
@@ -114,6 +116,7 @@ from api.user import user_bp, get_user_photo
 app.register_blueprint(auth_bp)
 app.register_blueprint(user_bp)
 app.register_blueprint(chat_bp)
+app.register_blueprint(admin_bp)  # Register our new admin blueprint
 
 # Проверяем БД перед запуском
 # Flag to ensure the logic runs only once
@@ -210,7 +213,7 @@ def admin_dashboard():
     # Check if user is logged in
     if 'user_id' not in session:
         return redirect(url_for('home'))
-    
+
     # Check if user is an admin
     conn = sqlite3.connect('database.db')
     conn.row_factory = sqlite3.Row
@@ -245,23 +248,47 @@ def admin_dashboard():
         stats = {}
         stats['total_users'] = conn.execute('SELECT COUNT(*) as count FROM users').fetchone()['count']
         
-        # Count active users (active in last 15 minutes)
-        import datetime
-        fifteen_mins_ago = (datetime.datetime.now() - datetime.timedelta(minutes=15)).isoformat()
-        stats['active_users'] = conn.execute(
-            'SELECT COUNT(*) as count FROM users WHERE last_active > ?', 
-            (fifteen_mins_ago,)
-        ).fetchone()['count']
+        # Check if last_active column exists before using it
+        if 'last_active' in columns:
+            # Count active users (active in last 15 minutes)
+            import datetime
+            fifteen_mins_ago = (datetime.datetime.now() - datetime.timedelta(minutes=15)).isoformat()
+            try:
+                stats['active_users'] = conn.execute(
+                    'SELECT COUNT(*) as count FROM users WHERE last_active > ?', 
+                    (fifteen_mins_ago,)
+                ).fetchone()['count']
+            except sqlite3.OperationalError:
+                # Fallback if the query fails
+                stats['active_users'] = 1  # At least the admin is active
+        else:
+            # If no last_active column, set a default value
+            stats['active_users'] = 1  # At least the admin is active
         
         # Count groups
         stats['total_groups'] = conn.execute('SELECT COUNT(*) as count FROM group_chats').fetchone()['count']
         
-        # Get recent users with their last activity time
-        recent_users = conn.execute('''
-            SELECT id, nickname, last_active 
-            FROM users 
-            ORDER BY last_active DESC LIMIT 10
-        ''').fetchall()
+        # Get recent users, use created_at instead of last_active if needed
+        try:
+            if 'last_active' in columns:
+                recent_users = conn.execute('''
+                    SELECT id, nickname, last_active 
+                    FROM users 
+                    ORDER BY last_active DESC LIMIT 10
+                ''').fetchall()
+            else:
+                recent_users = conn.execute('''
+                    SELECT id, nickname, created_at AS last_active
+                    FROM users 
+                    ORDER BY created_at DESC LIMIT 10
+                ''').fetchall()
+        except sqlite3.OperationalError:
+            # Fallback query if both fail
+            recent_users = conn.execute('''
+                SELECT id, nickname, '' AS last_active
+                FROM users 
+                LIMIT 10
+            ''').fetchall()
         
         conn.close()
         
